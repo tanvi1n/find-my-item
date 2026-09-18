@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Case Management Console - Admin - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+        Case Management Master
+      </h1>
+      <span class="nav-admin-badge">Admin Directory</span>
+    </div>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Review, audit, and monitor all lost and found incident filings while keeping closure actions with the reporting owner and verification flow.
+    </p>
+  </div>
+
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+    &larr; Back to Admin Overview
+  </a>
+</div>
+
+<!-- Admin KPI Ribbon -->
+<section class="metrics-ribbon" style="margin-bottom: 2rem;">
+  <div class="metric-card">
+    <span class="metric-title">Total Reports</span>
+    <span class="metric-value">{{ stats.total }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Open</span>
+    <span class="metric-value" style="color: var(--campus-blue);">{{ stats.open }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Potential Matches</span>
+    <span class="metric-value" style="color: #d97706;">{{ stats.matches }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Verification</span>
+    <span class="metric-value" style="color: #7c3aed;">{{ stats.verification }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Resolved</span>
+    <span class="metric-value" style="color: var(--status-resolved-text);">{{ stats.resolved }}</span>
+  </div>
+</section>
+
+<!-- Filter & Search Controls -->
+<div class="filter-bar" style="margin-bottom: 1.75rem;">
+  <div class="filter-row">
+    <div class="filter-group">
+      <span class="filter-label">Filter Status:</span>
+      <a href="{{ url_for('admin_cases', status='All', type=type_filter, q=query_str) }}" class="filter-pill {% if status_filter == 'All' %}active{% endif %}">All</a>
+      <a href="{{ url_for('admin_cases', status='Open', type=type_filter, q=query_str) }}" class="filter-pill {% if status_filter == 'Open' %}active{% endif %}">Open</a>
+      <a href="{{ url_for('admin_cases', status='Potential Match', type=type_filter, q=query_str) }}" class="filter-pill {% if status_filter == 'Potential Match' %}active{% endif %}">Potential Match</a>
+      <a href="{{ url_for('admin_cases', status='Verification', type=type_filter, q=query_str) }}" class="filter-pill {% if status_filter == 'Verification' %}active{% endif %}">Verification</a>
+      <a href="{{ url_for('admin_cases', status='Resolved', type=type_filter, q=query_str) }}" class="filter-pill {% if status_filter == 'Resolved' %}active{% endif %}">Resolved</a>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Type:</span>
+      <a href="{{ url_for('admin_cases', type='All', status=status_filter, q=query_str) }}" class="filter-pill {% if type_filter == 'All' %}active{% endif %}">All</a>
+      <a href="{{ url_for('admin_cases', type='Lost', status=status_filter, q=query_str) }}" class="filter-pill {% if type_filter == 'Lost' %}active{% endif %}">Lost</a>
+      <a href="{{ url_for('admin_cases', type='Found', status=status_filter, q=query_str) }}" class="filter-pill {% if type_filter == 'Found' %}active{% endif %}">Found</a>
+    </div>
+
+    <div class="filter-group">
+      <form method="GET" action="{{ url_for('admin_cases') }}" style="display: flex; gap: 0.35rem;">
+        <input type="hidden" name="status" value="{{ status_filter }}" />
+        <input type="hidden" name="type" value="{{ type_filter }}" />
+        <input 
+          type="text" 
+          name="q" 
+          placeholder="Filter by item or student..." 
+          value="{{ query_str }}" 
+          class="form-control" 
+          style="padding: 0.35rem 0.65rem; font-size: 0.85rem; width: 190px;" 
+        />
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Cases Master Table -->
+{% if cases %}
+  <div class="data-table-card">
+    <div class="table-responsive">
+      <table class="table" id="adminCasesTable">
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Item Name</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Reported By</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cases %}
+            <tr id="admin-row-{{ c.id }}">
+              <td>
+                <img src="{{ c.image_path }}" alt="{{ c.item_name }}" class="table-thumb" />
+              </td>
+              <td>
+                <a href="{{ url_for('item_detail', item_id=c.id) }}" style="font-weight: 700; color: var(--text-primary);">
+                  {{ c.item_name }}
+                </a>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                  Case #{{ c.id }} &bull; {{ c.category }}
+                </div>
+              </td>
+              <td>
+                <span class="badge {% if c.type == 'Lost' %}badge-type-lost{% else %}badge-type-found{% endif %}">
+                  {{ c.type }}
+                </span>
+              </td>
+              <td>{{ c.location }}</td>
+              <td>
+                <div style="font-weight: 600;">{{ c.reporter_name }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ c.reporter_username }}</div>
+              </td>
+              <td>{{ c.date }}</td>
+              <td>
+                {% if c.status == 'Open' %}
+                  <span class="badge badge-open"><span class="badge-dot"></span> OPEN</span>
+                {% elif c.status == 'Potential Match' %}
+                  <span class="badge badge-potential-match"><span class="badge-dot"></span> MATCH</span>
+                {% elif c.status == 'Verification' %}
+                  <span class="badge badge-verification"><span class="badge-dot"></span> VERIFICATION</span>
+                {% elif c.status == 'Resolved' %}
+                  <span class="badge badge-resolved"><span class="badge-dot"></span> RESOLVED</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 0.4rem; align-items: center;">
+                  <!-- View Button -->
+                  <a href="{{ url_for('item_detail', item_id=c.id) }}" class="btn btn-secondary btn-sm" id="btnAdminView-{{ c.id }}">
+                    View
+                  </a>
+
+                  <span style="font-size:.78rem;color:var(--text-muted);">Monitor only</span>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div style="text-align: center; padding: 4rem 1rem; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
+    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">
+      No cases match your filters.
+    </h3>
+    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+      Try resetting status or search keywords.
+    </p>
+    <a href="{{ url_for('admin_cases') }}" class="btn btn-secondary btn-sm">
+      Reset All Filters
+    </a>
+  </div>
+{% endif %}
+
+{% endblock %}

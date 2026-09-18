@@ -1,0 +1,6 @@
+{
+  "name": "Find-My-Item",
+  "description": "Find-My-Item is a centralized campus recovery platform connecting students, faculty, and administration to report, discover, match, verify, and resolve items with Python Flask and SQLite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,19 @@
+# /etc/systemd/system/lostfound.service
+# Systemd service unit for Find-My-Item on Ubuntu EC2
+
+[Unit]
+Description=Find-My-Item Gunicorn Application Server
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/campus-lost-found
+Environment="PATH=/home/ubuntu/campus-lost-found/venv/bin:/usr/bin"
+ExecStart=/home/ubuntu/campus-lost-found/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 wsgi:app
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}System Error - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 5rem 1rem;">
+  <h1 style="font-size: 3.5rem; font-weight: 800; color: #dc2626; margin-bottom: 0.5rem;">500</h1>
+  <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem;">
+    Internal Server Notice
+  </h2>
+  <p style="color: var(--text-muted); max-width: 460px; margin: 0 auto 2rem;">
+    The campus recovery system encountered an unexpected condition. Database transactions have been safely preserved.
+  </p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">
+    Return to Recovery Feed
+  </a>
+</div>
+{% endblock %}

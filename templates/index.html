@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Campus Recovery Board - Find-My-Item{% endblock %}
+
+{% block content %}
+  <!-- Central Search Experience -->
+  <section class="hero-search-section">
+    <h1 class="hero-title" id="homeHeroTitle">Lost something? Let's find it.</h1>
+    <p class="hero-subtitle">Search reports across campus.</p>
+
+    <div class="search-bar-wrapper">
+      <form method="GET" action="{{ url_for('index') }}" id="searchForm">
+        <!-- Preserve other filter selections during text search -->
+        <input type="hidden" name="type" value="{{ type_filter }}" />
+        <input type="hidden" name="status" value="{{ status_filter }}" />
+        <input type="hidden" name="location" value="{{ location_filter }}" />
+        <input type="hidden" name="category" value="{{ category_filter }}" />
+
+        <div class="search-input-group">
+          <div class="search-icon-affix">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            name="q" 
+            id="mainSearchInput" 
+            class="search-input" 
+            placeholder="Search item, location, or description..." 
+            value="{{ query_str }}"
+          />
+          {% if query_str %}
+            <a href="{{ url_for('index', type=type_filter, status=status_filter, location=location_filter, category=category_filter) }}" 
+               style="display: flex; align-items: center; padding: 0 0.85rem; color: var(--text-muted); font-size: 0.85rem;" 
+               title="Clear search">
+              Clear
+            </a>
+          {% endif %}
+          <button type="submit" class="search-submit-btn" id="searchBtn">
+            Search
+          </button>
+        </div>
+      </form>
+      <div class="search-suggestions" id="searchSuggestions" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Live SQLite Dynamic Metrics -->
+  <section class="metrics-ribbon">
+    <div class="metric-card">
+      <span class="metric-title">Total Reports</span>
+      <span class="metric-value">{{ stats.total }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-title">Open Reports</span>
+      <span class="metric-value" style="color: var(--campus-blue);">{{ stats.open }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-title">Potential Matches</span>
+      <span class="metric-value" style="color: #d97706;">{{ stats.matched }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-title">Under Verification</span>
+      <span class="metric-value" style="color: #7c3aed;">{{ stats.verification }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-title">Resolved</span>
+      <span class="metric-value" style="color: var(--status-resolved-text);">{{ stats.resolved }}</span>
+    </div>
+  </section>
+
+  <!-- Filter Bar -->
+  <section class="filter-bar" id="filterBar">
+    <div class="filter-row">
+      <!-- Type Filter -->
+      <div class="filter-group">
+        <span class="filter-label">Type:</span>
+        <a href="{{ url_for('index', q=query_str, type='All', status=status_filter, location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if type_filter == 'All' %}active{% endif %}">
+          All
+        </a>
+        <a href="{{ url_for('index', q=query_str, type='Lost', status=status_filter, location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if type_filter == 'Lost' %}active{% endif %}" id="filterTypeLost">
+          Lost
+        </a>
+        <a href="{{ url_for('index', q=query_str, type='Found', status=status_filter, location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if type_filter == 'Found' %}active{% endif %}" id="filterTypeFound">
+          Found
+        </a>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="filter-group">
+        <span class="filter-label">Status:</span>
+        <a href="{{ url_for('index', q=query_str, type=type_filter, status='All', location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if status_filter == 'All' %}active{% endif %}">
+          All
+        </a>
+        <a href="{{ url_for('index', q=query_str, type=type_filter, status='Open', location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if status_filter == 'Open' %}active{% endif %}" id="filterStatusOpen">
+          Open
+        </a>
+        <a href="{{ url_for('index', q=query_str, type=type_filter, status='Potential Match', location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if status_filter == 'Potential Match' %}active{% endif %}">
+          Potential Match
+        </a>
+        <a href="{{ url_for('index', q=query_str, type=type_filter, status='Verification', location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if status_filter == 'Verification' %}active{% endif %}">
+          Verification
+        </a>
+        <a href="{{ url_for('index', q=query_str, type=type_filter, status='Resolved', location=location_filter, category=category_filter) }}" 
+           class="filter-pill {% if status_filter == 'Resolved' %}active{% endif %}" id="filterStatusResolved">
+          Resolved
+        </a>
+      </div>
+
+      <!-- Dropdown Selects for Location & Category -->
+      <div class="filter-group">
+        <form method="GET" action="{{ url_for('index') }}" style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="hidden" name="q" value="{{ query_str }}" />
+          <input type="hidden" name="type" value="{{ type_filter }}" />
+          <input type="hidden" name="status" value="{{ status_filter }}" />
+
+          <select name="location" class="filter-select" onchange="this.form.submit()" id="locationSelect">
+            <option value="All">All Locations</option>
+            {% for loc in locations %}
+              <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
+            {% endfor %}
+          </select>
+
+          <select name="category" class="filter-select" onchange="this.form.submit()" id="categorySelect">
+            <option value="All">All Categories</option>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+
+          {% if location_filter != 'All' or category_filter != 'All' or type_filter != 'All' or status_filter != 'All' or query_str %}
+            <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem;" title="Reset all filters">
+              Reset
+            </a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section Header -->
+  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.25rem;">
+    <div>
+      <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary);">
+        Campus Recovery Feed
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Showing {{ items|length }} live report{% if items|length != 1 %}s{% endif %} in database
+      </p>
+    </div>
+    <a href="{{ url_for('report_item') }}" class="btn btn-primary btn-sm" id="postReportBtn">
+      + Report New Item
+    </a>
+  </div>
+
+  <!-- Recovery Board / Case Cards Grid -->
+  {% if items %}
+    <div class="recovery-board" id="recoveryBoard">
+      {% for item in items %}
+        <article class="case-card" id="case-card-{{ item.id }}">
+          <div class="case-image-wrapper">
+            <img src="{{ item.image_path }}" alt="{{ item.item_name }}" class="case-image" loading="lazy" />
+            
+            <div class="case-image-type-tag">
+              <span class="badge {% if item.type == 'Lost' %}badge-type-lost{% else %}badge-type-found{% endif %}">
+                {{ item.type }}
+              </span>
+            </div>
+
+            <div class="case-image-status-tag">
+              {% if item.status == 'Open' %}
+                <span class="badge badge-open"><span class="badge-dot"></span> OPEN</span>
+              {% elif item.status == 'Potential Match' %}
+                <span class="badge badge-potential-match"><span class="badge-dot"></span> POTENTIAL MATCH</span>
+              {% elif item.status == 'Verification' %}
+                <span class="badge badge-verification"><span class="badge-dot"></span> VERIFICATION</span>
+              {% elif item.status == 'Resolved' %}
+                <span class="badge badge-resolved"><span class="badge-dot"></span> RESOLVED</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="case-body">
+            <h3 class="case-title">{{ item.item_name }}</h3>
+            
+            <div class="case-meta">
+              <span class="case-meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                {{ item.location }}
+              </span>
+              <span>&bull;</span>
+              <span class="case-meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {{ item.date }}
+              </span>
+            </div>
+
+            <p class="case-description">
+              "{{ item.description }}"
+            </p>
+
+            <div class="case-footer">
+              <span class="case-reporter">
+                By {{ item.reporter_name }}
+              </span>
+              {% if current_user and (current_user.id|string) == (item.reported_by|string) and item.type == 'Lost' and item.status != 'Resolved' %}
+                <form method="POST" action="{{ url_for('resolve_own_lost_report', item_id=item.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-success btn-sm">Resolved</button>
+                </form>
+              {% endif %}
+              <a href="{{ url_for('item_detail', item_id=item.id) }}" class="btn btn-secondary btn-sm" id="viewCaseBtn-{{ item.id }}">
+                View Case &rarr;
+              </a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align: center; padding: 4rem 1rem; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">
+        No reports match your search criteria.
+      </h3>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Try clearing your keyword or changing the location and status filters.
+      </p>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm">
+        Reset All Filters
+      </a>
+    </div>
+  {% endif %}
+
+{% endblock %}

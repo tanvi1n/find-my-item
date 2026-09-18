@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Find-My-Item{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <a href="{{ url_for('index') }}" class="brand-wrapper" id="brandLogo">
+        <div class="brand-icon">FM</div>
+        <div class="brand-text">
+          <span class="brand-title">Find-My-Item</span>
+          <span class="brand-subtitle">Campus Recovery Board</span>
+        </div>
+      </a>
+
+      <nav class="main-nav">
+        <ul class="nav-links">
+          <li class="nav-item">
+            <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}" id="navHome">
+              Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('report_item') }}" class="{% if request.endpoint == 'report_item' %}active{% endif %}" id="navReport">
+              Report Item
+            </a>
+          </li>
+          {% if current_user %}
+            <li class="nav-item">
+              <a href="{{ url_for('my_reports') }}" class="{% if request.endpoint == 'my_reports' %}active{% endif %}" id="navMyReports">
+                My Reports
+              </a>
+            </li>
+            {% if is_verified_admin %}
+              <li class="nav-item">
+                <a href="{{ url_for('admin_dashboard') }}" class="{% if 'admin' in request.endpoint %}active{% endif %}" id="navAdmin">
+                  <span class="nav-admin-badge">Admin Console</span>
+                </a>
+              </li>
+            {% endif %}
+          {% endif %}
+        </ul>
+
+        <div class="nav-actions">
+          {% if current_user %}
+            <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
+              {{ current_user.name }}
+            </span>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm" id="logoutBtn">
+              Sign Out
+            </a>
+          {% else %}
+            <a href="{{ url_for('signup') }}" class="btn btn-secondary btn-sm" id="signupNavBtn">Sign Up</a>
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm" id="loginNavBtn">
+              Sign In
+            </a>
+          {% endif %}
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" role="alert">
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main Content -->
+  <main class="page-container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div>
+        <strong>Find-My-Item</strong> &bull; Powered by Flask, SQLite &amp; live campus data
+      </div>
+      <div>
+        Database is the single source of truth &bull; Academic Year {{ now_year }}
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

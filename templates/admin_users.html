@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}User Directory - Admin - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+        Campus Community Accounts
+      </h1>
+      <span class="nav-admin-badge">Directory</span>
+    </div>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Registered student, faculty, and administrative accounts with active SQLite report totals.
+    </p>
+  </div>
+
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+    &larr; Back to Admin Overview
+  </a>
+</div>
+
+<div class="data-table-card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Username</th>
+          <th>Campus Email</th>
+          <th>System Role</th>
+          <th>Reports Logged</th>
+          <th>Registered At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>
+              <div style="font-weight: 700; color: var(--text-primary);">{{ u.name }}</div>
+            </td>
+            <td>
+              <code style="font-size: 0.85rem; background: var(--bg-elevated); padding: 0.15rem 0.4rem; border-radius: 4px;">{{ u.username }}</code>
+            </td>
+            <td>{{ u.email }}</td>
+            <td>
+              {% if u.role == 'admin' %}
+                <span class="nav-admin-badge" style="display: inline-block;">Administrator</span>
+              {% else %}
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Student / Member</span>
+              {% endif %}
+            </td>
+            <td>
+              <span style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">
+                {{ u.reports_count }}
+              </span> report{% if u.reports_count != 1 %}s{% endif %}
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.82rem;">
+              {{ u.created_at }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

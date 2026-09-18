@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Operations Console - Find-My-Item{% endblock %}
+
+{% block content %}
+<!-- Admin Navigation Subheader -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+        Campus Operations Console
+      </h1>
+      <span class="nav-admin-badge" style="font-size: 0.75rem;">Security & Facilities</span>
+    </div>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Centralized case intake, match reconciliation, and campus property return oversight.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="{{ url_for('admin_cases') }}" class="btn btn-secondary btn-sm" id="btnAdminCasesNav">
+      Manage All Cases
+    </a>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary btn-sm" id="btnAdminUsersNav">
+      User Directory
+    </a>
+    <a href="{{ url_for('admin_activity') }}" class="btn btn-secondary btn-sm" id="btnAdminActivityNav">
+      Audit Activity
+    </a>
+  </div>
+</div>
+
+<!-- Top Summary KPIs strictly calculated from SQLite -->
+<section class="metrics-ribbon" style="margin-bottom: 2.25rem;">
+  <div class="metric-card">
+    <span class="metric-title">Total Reports</span>
+    <span class="metric-value">{{ stats.total }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Open Cases</span>
+    <span class="metric-value" style="color: var(--campus-blue);">{{ stats.open }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Potential Matches</span>
+    <span class="metric-value" style="color: #d97706;">{{ stats.matches }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Under Verification</span>
+    <span class="metric-value" style="color: #7c3aed;">{{ stats.verification }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Resolved & Returned</span>
+    <span class="metric-value" style="color: var(--status-resolved-text);">{{ stats.resolved }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Registered Users</span>
+    <span class="metric-value" style="color: var(--text-secondary);">{{ stats.users }}</span>
+  </div>
+</section>
+
+<!-- Pending Match Correlation Review -->
+{% if pending_matches %}
+  <section style="margin-bottom: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #d97706;"></span>
+        Correlation Queue Requiring Review
+      </h2>
+      <span style="font-size: 0.82rem; color: var(--text-muted);">Matches identified by scoring engine</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+      {% for pm in pending_matches %}
+        <div style="background: var(--bg-surface); border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #92400e;">Candidate Pair</span>
+            <span class="match-score-badge" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">{{ pm.match_score }}% Match</span>
+          </div>
+
+          <div style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem;">
+            <div style="display:flex;gap:.75rem;margin-bottom:.75rem;">
+              <img src="{{ pm.lost_img }}" alt="{{ pm.lost_name }}" class="table-thumb" />
+              <img src="{{ pm.found_img }}" alt="{{ pm.found_name }}" class="table-thumb" />
+            </div>
+            <div><strong>Lost:</strong> {{ pm.lost_name }} ({{ pm.lost_loc }})</div>
+            <div><strong>Found:</strong> {{ pm.found_name }} ({{ pm.found_loc }})</div>
+            <div style="margin-top:.35rem;"><strong>AI image validation:</strong> {{ pm.image_validation_status or 'Unavailable' }}{% if pm.image_similarity_score is not none %} ({{ pm.image_similarity_score }}%){% endif %}</div>
+            <div style="font-size:.78rem;color:var(--text-muted);">{{ pm.image_validation_reason or 'AI image validation unavailable.' }}</div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('item_detail', item_id=pm.lost_item_id) }}" class="btn btn-secondary btn-sm" style="flex: 1;">
+              Review Lost Case
+            </a>
+            <a href="{{ url_for('item_detail', item_id=pm.found_item_id) }}" class="btn btn-secondary btn-sm" style="flex: 1;">
+              Review Found Case
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<!-- Verification requests persisted in SQLite -->
+<section style="margin-bottom: 2.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Verification Requests</h2>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">Private details remain hidden</span>
+  </div>
+  {% if verification_requests %}
+    <div class="data-table-card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Lost Item</th><th>Found Item</th><th>Reporter</th><th>Match</th><th>Status</th><th>Cases</th></tr>
+          </thead>
+          <tbody>
+            {% for request in verification_requests %}
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:.6rem;"><img src="{{ request.lost_img }}" alt="{{ request.lost_name }}" class="table-thumb"><strong>{{ request.lost_name }}</strong></div></td>
+                <td><div style="display:flex;align-items:center;gap:.6rem;"><img src="{{ request.found_img }}" alt="{{ request.found_name }}" class="table-thumb"><strong>{{ request.found_name }}</strong></div></td>
+                <td>{{ request.reporter_name }}<br><span style="font-size:.75rem;color:var(--text-muted);">{{ request.reporter_email }}</span></td>
+                <td><span class="match-score-badge">{{ request.match_score }}%</span></td>
+                <td><span class="badge badge-verification"><span class="badge-dot"></span> {{ request.status }}</span></td>
+                <td>
+                  <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                    <a href="{{ url_for('admin_item_detail', item_id=request.lost_id) }}" class="btn btn-secondary btn-sm">Review timeline</a>
+                    {% if request.status == 'Pending' %}
+                      <form method="POST" action="{{ url_for('complete_verification', match_id=request.match_id) }}" style="display:flex;gap:.35rem;align-items:center;">
+                        <input type="text" name="private_detail" class="form-control" placeholder="Owner detail" required autocomplete="off" style="width:10rem;padding:.35rem .5rem;font-size:.78rem;" />
+                        <button type="submit" class="btn btn-success btn-sm">Verify and Proceed</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div style="padding:1.25rem;background:var(--bg-surface);border:1px dashed var(--border-subtle);border-radius:var(--radius-md);color:var(--text-muted);">No pending verification requests.</div>
+  {% endif %}
+</section>
+
+<!-- Split Dashboard: Recent Cases & Real-time Activity Feed -->
+<div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 2rem; align-items: start;">
+  <!-- Left: Recent Cases Table -->
+  <div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">
+        Recent Incident Reports
+      </h2>
+      <a href="{{ url_for('admin_cases') }}" style="font-size: 0.85rem; font-weight: 600;">
+        View All Cases &rarr;
+      </a>
+    </div>
+
+    <div class="data-table-card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in recent_cases %}
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.65rem;">
+                    <img src="{{ c.image_path }}" alt="{{ c.item_name }}" class="table-thumb" />
+                    <div>
+                      <div style="font-weight: 700; color: var(--text-primary);">{{ c.item_name }}</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">{{ c.reporter_name }} &bull; {{ c.date }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge {% if c.type == 'Lost' %}badge-type-lost{% else %}badge-type-found{% endif %}">
+                    {{ c.type }}
+                  </span>
+                </td>
+                <td>{{ c.location }}</td>
+                <td>
+                  {% if c.status == 'Open' %}
+                    <span class="badge badge-open"><span class="badge-dot"></span> OPEN</span>
+                  {% elif c.status == 'Potential Match' %}
+                    <span class="badge badge-potential-match"><span class="badge-dot"></span> MATCH</span>
+                  {% elif c.status == 'Verification' %}
+                    <span class="badge badge-verification"><span class="badge-dot"></span> VERIF</span>
+                  {% elif c.status == 'Resolved' %}
+                    <span class="badge badge-resolved"><span class="badge-dot"></span> RESOLVED</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right;">
+                  <a href="{{ url_for('item_detail', item_id=c.id) }}" class="btn btn-secondary btn-sm">
+                    View
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Recent Activity Feed from SQLite case_events -->
+  <div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">
+        Live Case Events
+      </h2>
+      <a href="{{ url_for('admin_activity') }}" style="font-size: 0.85rem; font-weight: 600;">
+        All Logs &rarr;
+      </a>
+    </div>
+
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+      <div class="timeline" style="padding-left: 1.5rem;">
+        {% for act in recent_activity %}
+          <div class="timeline-event {% if 'Resolved' in act.event %}resolved{% endif %}" style="margin-bottom: 1.25rem;">
+            <div class="timeline-dot" style="width: 12px; height: 12px; left: -1.5rem;"></div>
+            <div class="timeline-content">
+              <div class="timeline-time" style="font-size: 0.7rem;">{{ act.created_at }}</div>
+              <div class="timeline-name" style="font-size: 0.85rem;">{{ act.event }} &bull; {{ act.item_name }}</div>
+              <div class="timeline-desc" style="font-size: 0.8rem; margin-top: 0.15rem;">{{ act.description }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

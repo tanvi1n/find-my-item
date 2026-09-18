@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Report an Item - Find-My-Item{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+    <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 0.35rem;" id="reportPageHeading">
+      Report an item
+    </h1>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Help reconnect a lost item with its owner.
+    </p>
+  </div>
+
+  <form method="POST" action="{{ url_for('report_item') }}" enctype="multipart/form-data" id="reportItemForm">
+    <!-- 1. What Happened? Selector -->
+    <div class="form-group" style="margin-bottom: 1.75rem;">
+      <label class="form-label" style="font-size: 0.95rem; margin-bottom: 0.75rem;">What happened?</label>
+      <input type="hidden" name="type" id="itemTypeInput" value="Lost" />
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <button type="button" class="btn btn-secondary type-toggle-btn active" data-type="Lost" id="toggleLostBtn" style="padding: 1rem; font-size: 0.95rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.35rem;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          I LOST SOMETHING
+        </button>
+
+        <button type="button" class="btn btn-secondary type-toggle-btn" data-type="Found" id="toggleFoundBtn" style="padding: 1rem; font-size: 0.95rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.35rem;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          I FOUND SOMETHING
+        </button>
+      </div>
+      <p id="typeHelperText" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+        Describe the item you lost so the finder or campus security can recognize it.
+      </p>
+    </div>
+
+    <div class="form-group" id="lostReportSelection" hidden>
+      <label class="form-label" for="lostItemSelect">Match this found item to a reported lost item *</label>
+      <select name="lost_item_id" id="lostItemSelect" class="form-control" disabled>
+        <option value="">Loading current lost reports…</option>
+      </select>
+      <p id="lostReportEmpty" style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.5rem;" hidden>
+        No lost items are currently reported. You can submit a Lost Item report first.
+      </p>
+    </div>
+
+    <!-- 2. Item Name -->
+    <div class="form-group">
+      <label class="form-label" for="itemName">Item Name *</label>
+      <input 
+        type="text" 
+        name="item_name" 
+        id="itemName" 
+        class="form-control" 
+        placeholder="e.g. Black Leather Wallet, Casio Calculator, Hydro Flask" 
+        required 
+      />
+    </div>
+
+    <!-- 3. Category & Location -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="itemCategory">Category *</label>
+        <select name="category" id="itemCategory" class="form-control" required>
+          {% for cat in categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="itemLocation">Campus Location *</label>
+        <select name="location" id="itemLocation" class="form-control" required>
+          <option value="" disabled selected>Select location...</option>
+          {% for loc in locations %}
+            <option value="{{ loc }}">{{ loc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- 4. Date & Contact Information -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="itemDate">Date Incident Occurred *</label>
+        <input 
+          type="date" 
+          name="date" 
+          id="itemDate" 
+          class="form-control" 
+          value="{{ now_date }}" 
+          required 
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="itemContact">Contact Information *</label>
+        <input 
+          type="text" 
+          name="contact" 
+          id="itemContact" 
+          class="form-control" 
+          placeholder="Email, phone, or campus dorm/office" 
+          value="{{ current_user.email or '' }}" 
+          required 
+        />
+      </div>
+    </div>
+
+    <!-- 5. Detailed Description -->
+    <div class="form-group">
+      <label class="form-label" for="itemDescription">Description & Distinguishing Features <span id="foundDescriptionRequired" hidden>*</span></label>
+      <textarea 
+        name="description" 
+        id="itemDescription" 
+        rows="4" 
+        class="form-control" 
+        placeholder="Include brand, color, stickers, scratches, contents, or specific workbench/table details..."
+      ></textarea>
+    </div>
+
+    <!-- 6. Drag & Drop Image Upload with Live Preview -->
+    <div class="form-group">
+      <label class="form-label">Item Image</label>
+      <div class="file-dropzone" id="dropzone">
+        <input 
+          type="file" 
+          name="image" 
+          id="fileInput" 
+          accept="image/png, image/jpeg, image/jpg, image/webp" 
+          style="display: none;" 
+        />
+        
+        <div id="dropzoneContent">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.75" style="margin: 0 auto 0.75rem;">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <div id="dropzoneText">
+            <strong>Drag & drop an image here</strong> or <span style="color: var(--campus-blue); text-decoration: underline;">browse files</span>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Supports JPG, JPEG, PNG, WEBP (Max 16MB)
+            </div>
+          </div>
+        </div>
+
+        <img id="previewImg" class="dropzone-preview" alt="Upload preview" />
+      </div>
+    </div>
+
+    <!-- Submit Action -->
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">
+        Cancel
+      </a>
+      <button type="submit" class="btn btn-primary" id="submitReportBtn">
+        Submit Report
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Set default date to today's date
+  const dateInput = document.getElementById('itemDate');
+  if (dateInput && !dateInput.value) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+  }
+</script>
+{% endblock %}

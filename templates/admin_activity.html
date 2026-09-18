@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}System Audit Activity - Admin - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+        Incident Audit Trail
+      </h1>
+      <span class="nav-admin-badge">System Logs</span>
+    </div>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Immutable chronological timeline of all intake, correlation matches, updates, and case closures.
+    </p>
+  </div>
+
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+    &larr; Back to Admin Overview
+  </a>
+</div>
+
+<div class="timeline-card">
+  <div class="timeline">
+    {% for ev in events %}
+      <div class="timeline-event {% if 'Resolved' in ev.event %}resolved{% endif %}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-time">
+            {{ ev.created_at }} &bull; Operator: <strong>{{ ev.created_by }}</strong>
+          </div>
+          <div class="timeline-name" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
+            <span>{{ ev.event }}</span>
+            <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">on</span>
+            <a href="{{ url_for('item_detail', item_id=ev.item_id) }}" style="font-size: 0.88rem; font-weight: 700;">
+              Case #{{ ev.item_id }}: {{ ev.item_name }} ({{ ev.location }})
+            </a>
+          </div>
+          <div class="timeline-desc">{{ ev.description }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

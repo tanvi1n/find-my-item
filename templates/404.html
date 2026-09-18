@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Case Not Found - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 5rem 1rem;">
+  <h1 style="font-size: 3.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">404</h1>
+  <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem;">
+    Case or Page Not Found
+  </h2>
+  <p style="color: var(--text-muted); max-width: 460px; margin: 0 auto 2rem;">
+    The item case record you requested does not exist in the campus database or may have been permanently removed.
+  </p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">
+    Return to Recovery Feed
+  </a>
+</div>
+{% endblock %}

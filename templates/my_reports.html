@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}My Submitted Reports - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+  <div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 0.25rem;">
+      My Submitted Reports
+    </h1>
+    <p style="font-size: 0.95rem; color: var(--text-secondary);">
+      Track and manage your lost and found recovery records.
+    </p>
+  </div>
+  <a href="{{ url_for('report_item') }}" class="btn btn-primary" id="btnReportNewItem">
+    + Report Another Item
+  </a>
+</div>
+
+<!-- Personal Stats Ribbon -->
+<section class="metrics-ribbon" style="margin-bottom: 2rem;">
+  <div class="metric-card">
+    <span class="metric-title">My Total Reports</span>
+    <span class="metric-value">{{ stats.total }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Active / Open</span>
+    <span class="metric-value" style="color: var(--campus-blue);">{{ stats.open }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Matched</span>
+    <span class="metric-value" style="color: #d97706;">{{ stats.matched }}</span>
+  </div>
+  <div class="metric-card">
+    <span class="metric-title">Resolved</span>
+    <span class="metric-value" style="color: var(--status-resolved-text);">{{ stats.resolved }}</span>
+  </div>
+</section>
+
+<!-- Personal Filters -->
+<div class="filter-bar" style="margin-bottom: 1.75rem;">
+  <div class="filter-row">
+    <div class="filter-group">
+      <span class="filter-label">Filter Type:</span>
+      <a href="{{ url_for('my_reports', type='All', status=status_filter) }}" class="filter-pill {% if type_filter == 'All' %}active{% endif %}">All</a>
+      <a href="{{ url_for('my_reports', type='Lost', status=status_filter) }}" class="filter-pill {% if type_filter == 'Lost' %}active{% endif %}">Lost</a>
+      <a href="{{ url_for('my_reports', type='Found', status=status_filter) }}" class="filter-pill {% if type_filter == 'Found' %}active{% endif %}">Found</a>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Filter Status:</span>
+      <a href="{{ url_for('my_reports', type=type_filter, status='All') }}" class="filter-pill {% if status_filter == 'All' %}active{% endif %}">All</a>
+      <a href="{{ url_for('my_reports', type=type_filter, status='Open') }}" class="filter-pill {% if status_filter == 'Open' %}active{% endif %}">Open</a>
+      <a href="{{ url_for('my_reports', type=type_filter, status='Potential Match') }}" class="filter-pill {% if status_filter == 'Potential Match' %}active{% endif %}">Potential Match</a>
+      <a href="{{ url_for('my_reports', type=type_filter, status='Verification') }}" class="filter-pill {% if status_filter == 'Verification' %}active{% endif %}">Verification</a>
+      <a href="{{ url_for('my_reports', type=type_filter, status='Resolved') }}" class="filter-pill {% if status_filter == 'Resolved' %}active{% endif %}">Resolved</a>
+    </div>
+  </div>
+</div>
+
+<!-- List of Reports -->
+{% if reports %}
+  <div class="data-table-card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Date Reported</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reports %}
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <img src="{{ r.image_path }}" alt="{{ r.item_name }}" class="table-thumb" />
+                  <div>
+                    <div style="font-weight: 700; color: var(--text-primary);">{{ r.item_name }}</div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted);">{{ r.category }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge {% if r.type == 'Lost' %}badge-type-lost{% else %}badge-type-found{% endif %}">
+                  {{ r.type }}
+                </span>
+              </td>
+              <td>{{ r.location }}</td>
+              <td>{{ r.date }}</td>
+              <td>
+                {% if r.status == 'Open' %}
+                  <span class="badge badge-open"><span class="badge-dot"></span> OPEN</span>
+                {% elif r.status == 'Potential Match' %}
+                  <span class="badge badge-potential-match"><span class="badge-dot"></span> MATCH</span>
+                {% elif r.status == 'Verification' %}
+                  <span class="badge badge-verification"><span class="badge-dot"></span> VERIFICATION</span>
+                {% elif r.status == 'Resolved' %}
+                  <span class="badge badge-resolved"><span class="badge-dot"></span> RESOLVED</span>
+                {% endif %}
+                {% if r.verification_status == 'Pending' %}
+                  <div style="font-size:.75rem;color:#92400e;margin-top:.35rem;">Verification requested</div>
+                {% elif r.verification_status == 'Confirmed' %}
+                  <div style="font-size:.75rem;color:var(--status-resolved-text);margin-top:.35rem;">Verification confirmed</div>
+                {% elif r.type == 'Lost' and not r.match_id %}
+                  <div style="font-size:.75rem;color:var(--text-muted);margin-top:.35rem;">No match yet</div>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <div style="display:inline-flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                  <a href="{{ url_for('item_detail', item_id=r.id) }}" class="btn btn-secondary btn-sm">
+                    View Timeline &rarr;
+                  </a>
+                  {% if r.match_id and r.verification_status %}
+                    <a href="{{ url_for('item_detail', item_id=r.id) }}#matchBanner-{{ r.match_id }}" class="btn btn-primary btn-sm">
+                      View Verification
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div style="text-align: center; padding: 3rem 1rem; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
+    <p style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 1rem;">
+      You haven't submitted any reports under this filter.
+    </p>
+    <a href="{{ url_for('report_item') }}" class="btn btn-primary btn-sm">
+      Submit a Report Now
+    </a>
+  </div>
+{% endif %}
+
+{% endblock %}

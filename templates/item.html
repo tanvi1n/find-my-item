@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}Case #{{ item.id }}: {{ item.item_name }} - Find-My-Item{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+  <a href="{{ url_for('index') }}" style="font-size: 0.88rem; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 0.35rem;">
+    &larr; Back to Recovery Feed
+  </a>
+</div>
+
+<!-- Potential Match (live from SQLite matches table) -->
+{% if matches %}
+  {% for match in matches %}
+    <div class="match-banner animate-in" id="matchBanner-{{ match.id }}">
+      <div class="match-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span style="font-weight: 800; color: #92400e; font-size: 0.95rem;">
+            Your Lost Item &harr; Possible Found Item
+          </span>
+        </div>
+        <span class="match-score-badge" title="Computed from category, location, name, and date">
+          {{ match.breakdown.score }}% match
+        </span>
+      </div>
+
+      <div class="match-comparison">
+        <div class="match-item-side match-card-interactive">
+          <img src="{{ match.lost_img }}" alt="{{ match.lost_name }}" class="match-thumb" />
+          <div>
+            <span class="match-side-label lost">Lost item</span>
+            <div style="font-weight: 700; font-size: 0.95rem;">{{ match.lost_name }}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">{{ match.lost_loc }} &bull; {{ match.lost_date }}</div>
+            <a href="{{ url_for('item_detail', item_id=match.lost_id) }}" class="match-case-link">Case #{{ match.lost_id }}</a>
+          </div>
+        </div>
+
+        <div class="match-bridge" aria-hidden="true">&harr;</div>
+
+        <div class="match-item-side match-card-interactive">
+          <img src="{{ match.found_img }}" alt="{{ match.found_name }}" class="match-thumb" />
+          <div>
+            <span class="match-side-label found">Possible found item</span>
+            <div style="font-weight: 700; font-size: 0.95rem;">{{ match.found_name }}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">{{ match.found_loc }} &bull; {{ match.found_date }}</div>
+            <a href="{{ url_for('item_detail', item_id=match.found_id) }}" class="match-case-link">Case #{{ match.found_id }}</a>
+          </div>
+        </div>
+      </div>
+
+      <section class="timeline-card" style="margin-top: 1rem; background: var(--bg-surface);">
+        <h3 class="timeline-title" style="font-size: 1rem;">AI Image Validation</h3>
+        <p style="font-size: .82rem; color: var(--text-muted); margin-bottom: .8rem;">
+          The visual result is advisory only. Human verification is still required.
+        </p>
+        {% if match.image_validation_status == 'Passed' %}
+          <div class="info-grid">
+            <div class="info-item"><span class="info-label">Visual Similarity</span><span class="info-value">{{ match.image_similarity_score }}%</span></div>
+            <div class="info-item"><span class="info-label">AI Assessment</span><span class="info-value">AI suggests the images may show the same object.</span></div>
+            <div class="info-item"><span class="info-label">Status</span><span class="info-value">Requires Human Verification</span></div>
+            <div class="info-item"><span class="info-label">Validated At</span><span class="info-value">{{ match.image_validated_at }}</span></div>
+          </div>
+          {% if match.image_validation_evidence_list %}
+            <div class="match-reasons" style="margin-top: .8rem;">
+              <span class="match-reasons-title">Visual Evidence</span>
+              <ul>{% for evidence in match.image_validation_evidence_list %}<li>{{ evidence }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+        {% elif match.image_validation_status == 'Failed' %}
+          <p style="color: var(--type-lost-text);">AI visual comparison indicates substantial difference. This is not a valid match.</p>
+          <p style="font-size: .85rem; color: var(--text-secondary);">{{ match.image_validation_reason }}</p>
+        {% else %}
+          <p style="color: var(--text-secondary);">AI image validation unavailable.</p>
+          <p style="font-size: .85rem; color: var(--text-muted);">{{ match.image_validation_reason or 'No real uploaded image comparison is stored for this record.' }}</p>
+        {% endif %}
+      </section>
+
+      {% if match.breakdown.reasons %}
+        <div class="match-reasons">
+          <span class="match-reasons-title">Why this matched</span>
+          <ul>
+            {% for reason in match.breakdown.reasons %}
+              <li><strong>{{ reason.label }}:</strong> {{ reason.detail }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if current_user and match.status != 'Accepted' and item.status != 'Resolved' and match.image_validation_status == 'Passed' %}
+        {% if not match.verification and item.id == match.lost_item_id and item.reported_by == current_user.id %}
+          <form method="POST" action="{{ url_for('request_verification', match_id=match.id) }}" class="verification-form">
+            <label class="form-label">Request verification (private detail — never shown publicly)</label>
+            <input type="text" name="private_detail" class="form-control" placeholder="e.g. sticker inside, scratch mark, locker combo hint..." required minlength="3" autocomplete="off" />
+            <button type="submit" class="btn btn-primary btn-sm">Request Verification</button>
+          </form>
+        {% elif match.verification and match.verification.status == 'Pending' %}
+          {% if item.id == match.found_item_id and item.reported_by == current_user.id %}
+            <form method="POST" action="{{ url_for('complete_verification', match_id=match.id) }}" class="verification-form">
+              <label class="form-label">Confirm owner's private detail</label>
+              <input type="text" name="private_detail" class="form-control" placeholder="Enter detail provided by owner" required autocomplete="off" />
+              <button type="submit" class="btn btn-success btn-sm">Complete Verification &amp; Resolve</button>
+            </form>
+          {% elif item.id == match.lost_item_id and item.reported_by == current_user.id %}
+            <p class="verification-pending-note">Verification in progress — waiting for finder or admin to confirm your private detail.</p>
+          {% endif %}
+        {% elif match.verification and match.verification.status == 'Confirmed' and item.id == match.lost_item_id and item.reported_by == current_user.id %}
+          <form method="POST" action="{{ url_for('resolve_own_lost_report', item_id=item.id) }}" class="verification-form">
+            <p class="verification-pending-note">Verification is complete. Only you, as the Lost-report owner, can close this case.</p>
+            <button type="submit" class="btn btn-success btn-sm">Mark My Lost Report Resolved</button>
+          </form>
+        {% endif %}
+      {% endif %}
+
+      {% if is_verified_admin and match.verification and match.verification.status == 'Pending' and item.status != 'Resolved' %}
+        <form method="POST" action="{{ url_for('complete_verification', match_id=match.id) }}" class="verification-form">
+          <label class="form-label">Admin verification: enter the private detail supplied by the Lost owner</label>
+          <input type="text" name="private_detail" class="form-control" placeholder="Private identifying detail" required autocomplete="off" />
+          <button type="submit" class="btn btn-success btn-sm">Verify and Proceed</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Verification record: metadata is visible, but the private answer is never rendered. -->
+{% if matches %}
+  <section class="timeline-card" style="margin-bottom: 1.5rem;">
+    <h2 class="timeline-title">Verification</h2>
+    {% for match in matches %}
+      {% if match.verification %}
+        <div style="padding: 1rem; border: 1px solid var(--status-verif-border); border-radius: var(--radius-md); background: var(--status-verif-bg); margin-top: .75rem;">
+          <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;">
+            <strong>Lost Case #{{ match.lost_item_id }} ↔ Found Case #{{ match.found_item_id }}</strong>
+            <span class="badge badge-verification">{{ match.verification.status }}</span>
+          </div>
+          <div class="info-grid" style="margin-top: .8rem;">
+            <div class="info-item"><span class="info-label">Requested by</span><span class="info-value">{{ match.verification.requested_by_name }} ({{ match.verification.requested_by_username }})</span></div>
+            <div class="info-item"><span class="info-label">Requested at</span><span class="info-value">{{ match.verification.created_at }}</span></div>
+            <div class="info-item"><span class="info-label">Private verification detail</span><span class="info-value">Submitted securely — hidden from all case views</span></div>
+            <div class="info-item"><span class="info-label">Verification response</span><span class="info-value">{{ match.verification.status }}{% if match.verification.verified_by %} by {{ match.verification.verified_by }}{% endif %}</span></div>
+            <div class="info-item"><span class="info-label">Completed at</span><span class="info-value">{{ match.verification.verified_at or 'Awaiting confirmation' }}</span></div>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+{% endif %}
+
+<!-- Case Primary Detail Layout -->
+<div class="case-detail-layout">
+  <!-- Left: High-Res Image Display -->
+  <div class="detail-image-box">
+    <img src="{{ item.image_path }}" alt="{{ item.item_name }}" id="caseDetailMainImage" />
+  </div>
+
+  <!-- Right: Metadata & Incident Details -->
+  <div class="detail-info-card">
+    <div class="detail-header">
+      <div class="detail-badges">
+        <span class="badge {% if item.type == 'Lost' %}badge-type-lost{% else %}badge-type-found{% endif %}">
+          {{ item.type }}
+        </span>
+        
+        {% if item.status == 'Open' %}
+          <span class="badge badge-open"><span class="badge-dot"></span> OPEN</span>
+        {% elif item.status == 'Potential Match' %}
+          <span class="badge badge-potential-match"><span class="badge-dot"></span> POTENTIAL MATCH</span>
+        {% elif item.status == 'Verification' %}
+          <span class="badge badge-verification"><span class="badge-dot"></span> VERIFICATION</span>
+        {% elif item.status == 'Resolved' %}
+          <span class="badge badge-resolved"><span class="badge-dot"></span> RESOLVED</span>
+        {% endif %}
+      </div>
+
+      <h1 class="detail-title" id="caseDetailTitle">{{ item.item_name }}</h1>
+      <p class="detail-subline">
+        Case #{{ item.id }} &bull; Category: <strong>{{ item.category }}</strong>
+      </p>
+      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.75rem;font-size:.76rem;font-weight:700;">
+        <span class="badge badge-open">1. Report Created</span>
+        <span class="badge {% if item.status in ['Potential Match', 'Verification', 'Resolved'] %}badge-potential-match{% else %}badge-open{% endif %}">2. Potential Match</span>
+        <span class="badge {% if item.status in ['Verification', 'Resolved'] %}badge-verification{% else %}badge-open{% endif %}">3. Verification</span>
+        <span class="badge {% if item.status == 'Resolved' %}badge-resolved{% else %}badge-open{% endif %}">4. Recovered / Resolved</span>
+      </div>
+    </div>
+
+    <!-- Description Block -->
+    <div>
+      <span class="info-label">Description & Physical Details</span>
+      <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin-top: 0.35rem;">
+        {{ item.description }}
+      </p>
+    </div>
+
+    <!-- Case Information Metadata Grid -->
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-label">Campus Location</span>
+        <span class="info-value">{{ item.location }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Incident Date</span>
+        <span class="info-value">{{ item.date }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Reported By</span>
+        <span class="info-value">{{ item.reporter_name }} ({{ item.reporter_username }})</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Contact Route</span>
+        <span class="info-value" style="font-size: 0.88rem; word-break: break-all;">{{ item.contact }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Date Logged</span>
+        <span class="info-value" style="font-size: 0.88rem; color: var(--text-muted);">{{ item.created_at }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Last Database Update</span>
+        <span class="info-value" style="font-size: 0.88rem; color: var(--text-muted);">{{ item.updated_at }}</span>
+      </div>
+    </div>
+
+    <!-- Monitoring and owner actions -->
+    {% if is_verified_admin %}
+      <div style="background: var(--bg-elevated); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 0.5rem;">
+        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 0.75rem;">
+          Admin Desk Controls
+        </span>
+        
+        <p style="font-size:.88rem;color:var(--text-secondary);">Monitoring only. Resolution can happen only through owner verification and recovery.</p>
+      </div>
+    {% endif %}
+
+    {% if current_user and (current_user.id|string) == (item.reported_by|string) and item.type == 'Lost' and item.status != 'Resolved' %}
+      <div style="margin-top:.75rem; padding:1rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-elevated);">
+        <strong style="display:block; margin-bottom:.35rem;">Recovery status</strong>
+        <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:.7rem;">If you found your own item, resolve this Lost report directly. A Found-by-other match can still follow the verification flow.</p>
+        <form method="POST" action="{{ url_for('resolve_own_lost_report', item_id=item.id) }}">
+          <button type="submit" class="btn btn-success btn-sm">Resolved</button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if current_user and (current_user.id|string) == (item.reported_by|string) and item.status != 'Resolved' %}
+      <form method="POST" action="{{ url_for('delete_own_report', item_id=item.id) }}" style="margin-top:.75rem;">
+        <button type="submit" class="btn btn-danger btn-sm">Delete my report</button>
+      </form>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Database-Driven Case Timeline Incident Log -->
+<section class="timeline-card">
+  <h2 class="timeline-title">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+    Case Incident Log & Verification Timeline
+  </h2>
+
+  <div class="timeline">
+    {% for ev in events %}
+      <div class="timeline-event {% if 'Resolved' in ev.event %}resolved{% endif %}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-time">{{ ev.created_at }} &bull; Operator: {{ ev.created_by }}</div>
+          <div class="timeline-name">{{ ev.event }}</div>
+          <div class="timeline-desc">{{ ev.description }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}
